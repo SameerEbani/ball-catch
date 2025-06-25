@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ball Catcher Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #c3cfe2, #a8edea);
+      user-select: none;
+      touch-action: none;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    #slider {
+      width: 90vw;
+      max-width: 400px;
+      height: 50px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #ddd;
+      border-radius: 25px;
+      outline: none;
+      margin: 20px 0;
+    }
+
+    #slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 50px;
+      height: 50px;
+      background: #ff4d4d;
+      cursor: pointer;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      border: 2px solid #cc0000;
+      transition: background 0.3s ease;
+    }
+
+    #slider::-webkit-slider-thumb:hover {
+      background: #cc0000;
+    }
+
+    #slider::-moz-range-thumb {
+      width: 50px;
+      height: 50px;
+      background: #ff4d4d;
+      cursor: pointer;
+      border-radius: 50%;
+      border: 2px solid #cc0000;
+    }
+
+    #status {
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ball Catcher Controller</h1>
+  <input type="range" id="slider" min="0" max="1" step="0.01" value="0.5" />
+  <div id="status">Connecting...</div>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script>
+    const slider = document.getElementById('slider');
+    const status = document.getElementById('status');
+
+    const pathParts = window.location.pathname.split('/');
+    const desktopId = pathParts[2] || null;
+
+    if (!desktopId) {
+      status.textContent = 'Invalid URL - no desktop ID';
+      status.style.color = 'red';
+      throw new Error('Missing desktop ID in URL');
+    }
+
+    const socket = io("http://192.168.1.172:3000");
+
+    socket.on('connect', () => {
+      status.textContent = 'Connected to server';
+      status.style.color = 'green';
+      socket.emit('register', desktopId); // ✅ Use correct event name
+    });
+
+    socket.on('disconnect', () => {
+      status.textContent = 'Disconnected';
+      status.style.color = 'red';
+    });
+
+    slider.addEventListener('input', () => {
+      const val = parseFloat(slider.value);
+      // Send normalized value to desktop
+      socket.emit('sliderMove', { x: val * 100, y: 0 });
+    });
+  </script>
+</body>
+</html>

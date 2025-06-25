@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ball Catcher Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #000;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    #qrSection {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #start-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, #000033, #000000);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      z-index: 1001;
+    }
+
+    #title {
+      font-size: 48px;
+      margin-bottom: 30px;
+      color: #00ffff;
+      padding: 20px;
+      text-shadow: 0 0 10px #0066ff;
+      animation: titlePulse 2s infinite;
+    }
+
+    #start-btn {
+      padding: 15px 40px;
+      background: linear-gradient(to bottom, #00cc66, #00994d);
+      color: white;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.3s;
+      box-shadow: 0 0 15px #00cc66;
+      margin-bottom: 20px;
+    }
+
+    #start-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px #00cc66;
+    }
+
+    #instructions {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 500px;
+      text-align: center;
+      margin-top: 20px;
+      border: 1px solid #00ffff;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    #game {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      height: 500px;
+      background: linear-gradient(to bottom, #a8edea, #fed6e3);
+      border-radius: 15px;
+      margin: auto;
+      margin-top: 80px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    #ball {
+      width: 30px;
+      height: 30px;
+      background: radial-gradient(circle at 30% 30%, #ff4d4d, #cc0000);
+      border-radius: 50%;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      transition: left 0.05s;
+    }
+
+    #basket {
+      width: 100px;
+      height: 20px;
+      background: linear-gradient(to right, #8b4513, #a0522d);
+      border-radius: 10px;
+      position: absolute;
+      bottom: 15px;
+      left: 250px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      transition: left 0.1s;
+    }
+
+    #scoreboard {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-weight: bold;
+      font-size: 18px;
+      color: #333;
+      z-index: 1;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 6px 10px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    #gameOver {
+      position: absolute;
+      width: 100%;
+      top: 40%;
+      text-align: center;
+      font-size: 40px;
+      font-weight: bold;
+      color: #ff0033;
+      display: none;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.7; }
+      100% { transform: scale(1.1); opacity: 1; }
+    }
+
+    @keyframes titlePulse {
+      0% { transform: scale(1); text-shadow: 0 0 10px #0066ff; }
+      50% { transform: scale(1.05); text-shadow: 0 0 20px #00ffff; }
+      100% { transform: scale(1); text-shadow: 0 0 10px #0066ff; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="start-screen">
+    <div id="qrSection">
+      <img src="https://i.gifer.com/ZZ5H.gif" alt="QR Code" width="150" height="150" id="qrcode"
+           style="border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);" />
+      <p>Scan the QR code with your mobile device to play!</p>
+    </div>
+    <h1 id="title">BALL CATCHER</h1>
+    <button id="start-btn">START GAME</button>
+    <div id="instructions">
+      <p>Catch the falling balls with your basket.</p>
+      <p>Move the basket using touch, mouse, arrow keys or mobile controller.</p>
+      <p>Game ends if you miss 5 balls.</p>
+    </div>
+  </div>
+
+  <div id="game">
+    <div id="scoreboard">
+      🎯 Score: <span id="score">0</span> | ❌ Missed: <span id="missed">0</span>
+    </div>
+    <div id="ball"></div>
+    <div id="basket"></div>
+    <div id="gameOver">Game Over 😢</div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script>
+    const socket = io("http://192.168.1.172:3000");
+
+    socket.on("connect", () => {
+      console.log("Connected with ID:", socket.id);
+    });
+
+    socket.on("socket_id", (id) => {
+      document.getElementById("qrcode").src =
+        `http://192.168.1.172:3000/generate?text=http://192.168.1.172:3000/soc/${id}`;
+    });
+
+    socket.on("scanconnected", () => {
+      console.log("Mobile connected");
+    });
+
+    const game = document.getElementById("game");
+    const ball = document.getElementById("ball");
+    const basket = document.getElementById("basket");
+    const scoreText = document.getElementById("score");
+    const missedText = document.getElementById("missed");
+    const gameOverText = document.getElementById("gameOver");
+    const startScreen = document.getElementById("start-screen");
+    const startBtn = document.getElementById("start-btn");
+
+    let basketX = 250;
+    let ballX = Math.random() * 570;
+    let ballY = 0;
+    let score = 0;
+    let missed = 0;
+    let speed = 2;
+    let isGameOver = false;
+
+    const gameWidth = 600;
+    const basketWidth = 100;
+
+    function moveBasketTo(x) {
+      basketX = Math.min(Math.max(x - basketWidth / 2, 0), gameWidth - basketWidth);
+      basket.style.left = basketX + "px";
+    }
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowLeft") {
+        basketX -= 20;
+        if (basketX < 0) basketX = 0;
+      } else if (e.key === "ArrowRight") {
+        basketX += 20;
+        if (basketX > gameWidth - basketWidth) basketX = gameWidth - basketWidth;
+      }
+      basket.style.left = basketX + "px";
+    });
+
+    game.addEventListener("mousemove", function (e) {
+      const rect = game.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      moveBasketTo(mouseX);
+    });
+
+    game.addEventListener("touchstart", function (e) {
+      const rect = game.getBoundingClientRect();
+      const touchX = e.touches[0].clientX - rect.left;
+      moveBasketTo(touchX);
+    });
+
+    function resetBall() {
+      ballX = Math.random() * (gameWidth - 30);
+      ballY = 0;
+      ball.style.left = ballX + "px";
+    }
+
+    function update() {
+      if (isGameOver) return;
+
+      ballY += speed;
+      ball.style.top = ballY + "px";
+
+      if (ballY >= 470) {
+        if (ballX + 30 > basketX && ballX < basketX + basketWidth) {
+          score++;
+          scoreText.textContent = score;
+          speed += 0.5;
+        } else {
+          missed++;
+          missedText.textContent = missed;
+          if (missed >= 5) {
+            gameOverText.style.display = "block";
+            isGameOver = true;
+            return;
+          }
+        }
+        resetBall();
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    startBtn.addEventListener("click", () => {
+      startScreen.style.display = "none";
+      resetBall();
+      update();
+    });
+
+    socket.on("sliderUpdate", (data) => {
+      if (data.x !== undefined && data.x !== 0) {
+        const gameBounds = game.getBoundingClientRect();
+        const x = (data.x / 100) * (gameBounds.width - basketWidth);
+        moveBasketTo(x + basketWidth / 2);
+      }
+    });
+
+    socket.on("triggerSpin", () => {
+      // Future action on trigger
+    });
+
+    document.addEventListener('contextmenu', (e) => {
+      if (touchControls) e.preventDefault();
+    });
+  </script>
+</body>
+</html>
