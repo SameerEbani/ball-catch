@@ -1,4 +1,12 @@
 {
   "schemaVersion": 2,
-  "templateId": "node"
+  "dockerfileLines": [
+    "FROM node:20",
+    "WORKDIR /app",
+    "COPY package*.json ./",
+    "RUN npm install",
+    "COPY . .",
+    "EXPOSE 3000",
+    "CMD [\"npm\", \"start\"]"
+  ]
 }
